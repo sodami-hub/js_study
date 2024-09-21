@@ -34,8 +34,6 @@ var key = 'hello';
 person[key] = 'world';
 console.log(person);
 
-//ES6
-key = 'hi';
-person={[key]:'js'};
+
 
 console.log(person);
