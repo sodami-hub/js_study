@@ -17,10 +17,22 @@ console.log(obj);
 const obj02 = {
     name:'lee',
     sayHi() {
-        console.log('Hi'+this.name);
+        console.log('Hi, '+this.name);
     }
 };
 
 obj02.sayHi();
 
 console.log(obj02);
+
+//----
+
+const obj03 = {
+    name:'kim',
+    hello: function sayHello() {
+        console.log('Hello, '+this.name);
+    }
+};
+
+obj03.hello();
+console.log(obj03);
