@@ -30,10 +30,5 @@ console.log(person);
 
 var key = 'hello';
 
-//ES5
 person[key] = 'world';
-console.log(person);
-
-
-
 console.log(person);
