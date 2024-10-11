@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+</head>
+<body>
+<script>
+  function foo() {
+    const x = 1;
+    const y = 2;
+
+    function bar() {
+      //const z = 3;
+
+      debugger;
+
+      //console.log(z)
+      // 상위 스코프의 변수를 참조하면 클로저가 됨??
+      console.log(x);
+    }
+
+    return bar;
+  }
+
+  const bar =foo();
+  bar();
+</script>
+</body>
+</html>
