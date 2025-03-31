@@ -3,7 +3,9 @@
 
 // js가 인터프리터언어 이지만 런타임 이전에 변수 선언이 이루어짐.
 // 따라서 아래 코드가 변수 선언 전에 실행되지만 실행이전에 변수가 선언되기에 undefined 출력
+
 console.log(score);  //undefined 출력
+
 
 var score;
 
@@ -11,3 +13,4 @@ var score;
 score = 80;
 
 console.log(score); // 80출력
+
