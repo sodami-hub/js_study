@@ -23,6 +23,10 @@ var res = (function () {
 
 console.log(res);
 
+(function () {
+    console.log('hi');
+}());
+
 
 var result = (function (a,b) {
     return a*b;
