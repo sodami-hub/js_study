@@ -26,6 +26,7 @@ const arrow = () => {};
 // new arrow(); // arrow is not a constructor
 
 const obj = {
+    // 메서드 축약표현으로 정의한 메서드!! ECMAScript 사양에서 메서드는 이것만 의미한다.
     x() {}
 };
 
