@@ -1,15 +1,6 @@
-const base = {
-  name : 'lee',
-  sayHi() {
-    return `Hi, ${this.name}!`;
-  }
-};
+const numbers = [1,2,3,4,5];
 
-const derived = {
-  __proto__ : base,
-  sayHi() {
-    return `${super.sayHi()}. how are you doing?`;
-  }
-};
+const delIndex = numbers.indexOf(3);
 
-console.log(derived.sayHi());
+numbers.splice(delIndex,1);
+console.log(numbers)
