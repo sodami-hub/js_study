@@ -1,6 +1,5 @@
-const numbers = [1,2,3,4,5];
+const numObj = Number(77.1234);
 
-const delIndex = numbers.indexOf(3);
-
-numbers.splice(delIndex,1);
-console.log(numbers)
+console.log(numObj.toExponential())
+console.log(numObj.toExponential(4))
+console.log(numObj.toExponential(2))
