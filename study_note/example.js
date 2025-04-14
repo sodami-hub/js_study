@@ -1,8 +1,16 @@
-const obj = {
-    [Symbol.for('my')] : 1
+const arrayLike = {
+    0:1,
+    1:2,
+    2:3,
+    length:3
 };
 
-console.log(Object.getOwnPropertySymbols(obj)); // [Symbol(my)]
+// 유사 배열 객체는 length 프로퍼티를 갖기 때문에 for 문으로 순회 가능
+for (let i = 0; i< arrayLike.length; i++) {
+    console.log(arrayLike[i]);
+}
 
-const symbolKey = Object.getOwnPropertySymbols(obj)[0];
-console.log(obj[symbolKey]);
+// 이터러블이 아니기 때문에 for...of 문 사용 불가
+for (const item of arrayLike) {
+    console.log(item)
+}
