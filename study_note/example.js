@@ -1,4 +1,12 @@
-const user = {name:'lee', age:30};
-const {name:a,age:b} = user;
+const lee = {name: 'Lee'};
+const kim = {name: 'Kim'};
 
-console.log(a,b); // lee 30
+const map = new Map([[lee, "developer"],[kim,"designer"],[kim,"designer"]]);
+
+for (const key of map.keys()) {
+    console.log(key);
+}
+
+for(const val of map.values() ) {
+    console.log(val);
+}
