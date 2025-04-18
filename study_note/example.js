@@ -1,12 +1,3 @@
-const lee = {name: 'Lee'};
-const kim = {name: 'Kim'};
+const arr = [1,2,3];
 
-const map = new Map([[lee, "developer"],[kim,"designer"],[kim,"designer"]]);
-
-for (const key of map.keys()) {
-    console.log(key);
-}
-
-for(const val of map.values() ) {
-    console.log(val);
-}
+console.log(Array.isArray(arr));
