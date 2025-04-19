@@ -6,25 +6,14 @@
 </head>
 <body>
 <div>
-    <ul id="fruits">
-        <li class="apple">apple</li>
-    </ul>
+    <div class="box red">hello world</div>
 </div>
 <script>
-    const $fruits = document.getElementById('fruits');
-    const $apple = document.querySelector('.apple');
+    const $div = document.querySelector('.box')
+    console.log($div.classList) // ['box', 'red', value: 'box red']
 
-    // 얕은 복사하여 사본을 생성
-    const $shallowClone = $apple.cloneNode();
-
-    // 사본 요소에 텍스트 노드 추가
-    $shallowClone.appendChild(document.createTextNode('shallowCopyNode'))
-    $fruits.appendChild($shallowClone)
-
-    // fruits 요소를 깊은 복사하여 모든 자손 노드가 포함된 사본생성
-    const $deepClone = $fruits.cloneNode(true);
-    // 생성된 사본을 fruits 요소의 마지막 노드로 추가
-    $fruits.appendChild($deepClone);
+    $div.classList.replace('red', 'blue');
+    console.log($div.classList) //['box', 'blue', value: 'box red']
 </script>
 </body>
 </html>
