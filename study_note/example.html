@@ -4,16 +4,32 @@
     <meta charset="UTF-8">
     <title>DOM API Example</title>
 </head>
+<style>
+</style>
 <body>
-<div>
-    <div class="box red">hello world</div>
+<div class="container">
+    <button class="btn1">btn01</button>
+    <button class="btn2">btn02</button>
+    <button class="btn3">btn03</button>
 </div>
-<script>
-    const $div = document.querySelector('.box')
-    console.log($div.classList) // ['box', 'red', value: 'box red']
+    <script>
+        const $container = document.querySelector('.container');
 
-    $div.classList.replace('red', 'blue');
-    console.log($div.classList) //['box', 'blue', value: 'box red']
-</script>
+        function containedEvent ({target}) {
+            if (!target.matches('.container>button')) return;
+            console.log(target);
+            [...$container.children].forEach(() => {
+                target.style.color = 'red';
+            })
+        }
+
+        $container.addEventListener('click', containedEvent);
+
+        const $btn2 = document.querySelector('.btn2')?.addEventListener('click',(event)=> {
+            event.stopPropagation();
+            event.target.style.color = 'green';
+        })
+
+    </script>
 </body>
 </html>
