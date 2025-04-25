@@ -1,8 +1,11 @@
-const arr = [1,2,3];
-
-console.log(Array.isArray(arr));
-
 function foo() {
-    console.log(this);
+    console.log('foo')
 }
-foo();
+
+function bar() {
+    console.log('bar')
+}
+
+setTimeout(foo, 2000)
+
+bar();

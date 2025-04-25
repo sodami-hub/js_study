@@ -7,29 +7,30 @@
 <style>
 </style>
 <body>
-<div class="container">
-    <button class="btn1">btn01</button>
-    <button class="btn2">btn02</button>
-    <button class="btn3">btn03</button>
-</div>
+    <input type="text">
+    <div class="msg"></div>
     <script>
-        const $container = document.querySelector('.container');
+        const $input = document.querySelector("input");
+        const $msg = document.querySelector(".msg");
 
-        function containedEvent ({target}) {
-            if (!target.matches('.container>button')) return;
-            console.log(target);
-            [...$container.children].forEach(() => {
-                target.style.color = 'red';
-            })
-        }
+        const throttle = (callback, delay) => {
+            let timerId;
 
-        $container.addEventListener('click', containedEvent);
+            return(...args) => {
+                // timerId 가 한번 설정되면 딜레이가 끝날때까지 아무 일도 일어나지 않음
+                // 딜레이가 끝나면 콜백함수 실행 및 타이머 재설정
+                // ==> 딜레이 간격으로 콜백함수가 실행됨
+                if(timerId) return;
+                timerId = setTimeout(()=>{
+                    callback(...args);
+                    timerId=null
+                },delay);
+            };
+        };
 
-        const $btn2 = document.querySelector('.btn2')?.addEventListener('click',(event)=> {
-            event.stopPropagation();
-            event.target.style.color = 'green';
-        })
-
+        $input.oninput = throttle((e)=> {
+            $msg.textContent=e.target.value;
+        },500)
     </script>
 </body>
 </html>
