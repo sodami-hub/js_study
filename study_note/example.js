@@ -1,11 +1,20 @@
-function foo() {
-    console.log('foo')
-}
+const get = url => {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", url);
+        xhr.send()
 
-function bar() {
-    console.log('bar')
-}
+        xhr.onload = () => {
+            if (xhr.status === 200) {
+                resolve(JSON.parse(xhr.response));
+            } else {
+                reject(new Error(xhr.status));
+            }
+        };
+    });
+};
 
-setTimeout(foo, 2000)
-
-bar();
+get('https://jsonplaceholder.typicode.com/posts/1')
+    .then(r => console.log(r))
+    .catch(e=>console.error(e))
+    .finally(()=>console.log('bye!'));
