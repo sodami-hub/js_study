@@ -7,7 +7,7 @@ DOM에 대해서 자세히 살펴보겠다.
 HTML 요소는 렌더링 엔진에 의해 파싱되어 DOM을 구성하는 요소 노드 객체로 변환된다. 이때 HTML 요소의 어트리뷰트는 어트리뷰트 노드로, HTML
 요소의 텍스트 콘텐츠는 텍스트 노드로 변환된다. 
 
-<img src="./images/39-01.png">
+<img src="images/39-01.png">
 
 HTML 문서는 HTML 요소들의 집합으로 이뤄지며, HTML 요소는 중첩 관계를 가진다. 즉, HTML 요소의 콘텐츠 영역(시작 태그와 종료 태그 사이)에는
 텍스트뿐만 아니라 다른 HTML 요소도 포함할 수 있다.  
@@ -37,7 +37,7 @@ HTML 문서는 HTML 요소들의 집합으로 이뤄지며, HTML 요소는 중�
 ```
 렌더링 엔진은 위 문서를 다음과 같이 DOM을 생성한다.
 
-<img src="./images/39-02.png">
+<img src="images/39-02.png">
 
 - 문서 노드    
 문서 노드는 DOM 트리의 최상위에 존재하는 루트 노드로서 document 객체를 가리킨다. document 객체는 브라우저가 렌더링한 HTML 문서 전체를 가리키는
@@ -53,7 +53,7 @@ HTML 문서는 HTML 요소들의 집합으로 이뤄지며, HTML 요소는 중�
 
 #### 39.1.3 노드 객체의 상속 구조
 
-<img src="./images/39-03.png">
+<img src="images/39-03.png">
 
 위 그림과 같이 모든 노드 객체는 Object, EventTarget, Node 인터페이스를 상속받는다. 추가적으로 문서 노드는 Document, HTMLDocument
 인터페이스를 상속받고 어트리뷰트 노드는 Attr, 텍스트 노드는 CharacterData 인터페이스를 각각 상속받는다.  
@@ -195,7 +195,7 @@ getElementsByTagName, getElementsByClassName 메서드 대신 querySelectorAll �
 ### 39.3 노드 탐색
 요소 노드를 취득한 다음, 취득한 요소 노드를 기점으로 DOM 트리 노드를 옮겨 다니며 부모, 형제, 자식 노드 등을 탐색해야 할 때가 있다.
 
-<img src="./images/39-04.png">
+<img src="images/39-04.png">
 
 parentNode, previousSibling, firstChild, childNodes 프로퍼티는 Node.prototype 이 제공하고, 프로퍼티 키에 Element가 포함된 프로퍼티와
 children 프로퍼티는 Element.prototype 이 제공한다.  
