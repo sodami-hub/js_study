@@ -1,7 +1,7 @@
 // 클래스 컴포넌트에서 일반함수와 화살표 함수의 동작 차이(this 바인딩)
 
 import React from "react";
-import '../App.css';
+import './ch01/src/App.css';
 
 export default class Component extends React.Component {
   constructor(props) {
