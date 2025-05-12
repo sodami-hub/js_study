@@ -12,12 +12,12 @@ export default class Component extends React.Component {
   }
 
   functionCountUp() {
-    console.log(this)
+    console.log(this)  // undefined
     this.setState((prev)=>({counter:prev.counter +1}))
   }
 
   ArrowFunctionCountUp=()=> {
-    console.log(this)
+    console.log(this)  // class Component
     this.setState(prev=>({counter:prev.counter+1}))
   }
 
