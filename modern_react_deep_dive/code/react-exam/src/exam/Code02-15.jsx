@@ -1,7 +1,7 @@
 // 리액트 컴포넌트 트리의 렌더링 과정을 살펴보기 위한 예제
 import {memo, useState} from "react";
 
-export default function A() {
+export function A() {
   return (
     <div>
     <h1>Hello React!</h1>
