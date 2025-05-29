@@ -9,3 +9,7 @@
 참고도서
 
 <img src="./modern_react.png" width="150">
+
+### ./타입스크립트_교과서
+
+<img src="./타입스크립트교과서.jpg" width="150">
