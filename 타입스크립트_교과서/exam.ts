@@ -1,16 +1,4 @@
-class Person {
-  name:string;
-  age:number;
-  married:boolean;
-
-  constructor(name:string, age:number, married:boolean) {
-    this.name= name;
-    this.age = age;
-    this.married = married;
-  }
-  sayName() {
-    console.log(`Hello ${this.name}!`);
-  }
-}
-const zero =new Person("hi",1,true)
-zero.sayName();
+type Add01 = (x:number, y:number) => number;
+type Add02 = (x:string, y:string) => string;
+type Add = Add01 & Add02;
+const add:Add = (x:any,y:any)=>x+y;
