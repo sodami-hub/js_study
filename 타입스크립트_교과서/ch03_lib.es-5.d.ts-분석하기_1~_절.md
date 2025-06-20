@@ -124,13 +124,104 @@ type MyInstanceType<T extends abstract new (...args:any)=>any> = T extends abstr
 메서드들에 this를 한 방에 주입하는 타입이다.
 
 ## 3.5 forEach 만들기
+## 3.6 map 만들기
+## 3.7 filter 만들기
+## 3.8 reduce 만들기
+## 3.9 flat 분석하기
+
+## 3.10 Promise, Awaited 타입 분석하기
+Promise와 Awaited 타입을 분석하면서 다음 코드의 타입 추론이 어떻게 이루어지는지 확인해보겠다.
+```typescript
+(async () => {
+  const str = await Promise.resolve('promise')
+  const all = await Promise.all([
+    'string',
+    Promise.resolve(123),
+    Promise.resolve(Promise.resolve(true)),
+  ]);
+  const chaining = await Promise.resolve('hi')
+    .then(()=>{
+      return 123;
+    })
+    .then(()=> {
+      return true;
+    })
+    .catch((err)=> {
+      console.log(err);
+    })
+})();
+```
+Promise는 ES2015에 도입된 기능이다.
+```typescript
+interface PromiseConstructor {
+  
+  readonly prototype: Promise<any>;
+
+  new <T>(executor: (resolve: (value: T | PromiseLike<T>) => void, reject: (reason?: any) => void) => void): Promise<T>;
+
+  all<T extends readonly unknown[] | []>(values: T): Promise<{ -readonly [P in keyof T]: Awaited<T[P]> }>;
+
+  race<T extends readonly unknown[] | []>(values: T): Promise<Awaited<T[number]>>;
+
+  reject<T = never>(reason?: any): Promise<T>;
+
+  resolve(): Promise<void>;
+  
+  resolve<T>(value: T): Promise<Awaited<T>>;
+  
+  resolve<T>(value: T | PromiseLike<T>): Promise<Awaited<T>>;
+}
+declare var Promise: PromiseConstructor;
+```
+PromiseConstructor 인터페이스가 실제 Promise 객체의 타입이다. new 를 붙여 호출할 수도 있고 all, race, reject, resolve 등의 메서드가 있다고 알려주고 있다. 
+여기서 다음 코드를 분석해보겠다. export {} 는 top level await 에서 에러가 발생하는 것을 막기 위해 추가했다.
+```typescript
+const str1 = Promise.resolve('promise');
+const str2 = await Promise.resolve('promise')
+export {}
+```
+str1은 resolve의 반환값이 `Promise<Awaited<string>>`이다. str2는 str1에 await이 붙었다. 타입스크립트에서 await이 붙으면 타입이 Awaited 제네릭 타입으로 감싸진다.
+따라서 str2 는 `Awaited<Promise<Awaited<string>>>`이다.  
+왜 `Promise<Awaited<string>>`는 `Promise<string>` 이고, `Awaited<Promise<Awaited<string>>>` 는 string 일까? Awaited 타입은 다음과 같다. Promise 객체의 타입은
+ES2015에 선언되었는데, Awaited 타입은 더 예전 버전인 ES5에서 선언되었다는 점이 재미있다.
+```typescript
+type Awaited<T> =
+  T extends null | undefined ? T : 
+    T extends object & { then(onfulfilled: infer F, ...args: infer _): any } ? 
+      F extends ((value: infer V, ...args: infer _) => any) ?
+        Awaited<V> : 
+        never : 
+      T;
+```
+컨디셔널 타입이 세 번 중첩되어 나타나고 있다.  
+첫 번째 컨디셔널 타입은 T가 null 이거나 undefined 인지 확인한다. `Awaited<null>`은 null 이고, `Awaited<undefined>`는 undefined 이다.  
+두 번째 컨디셔널 타입은 T가 object & { then(onfulfilled : infer F, ...args : infer _) : any } 를 extends 하는지 확인한다.  **T가 string, number, boolean 의 경우는
+object가 아니므로 false 이다. `Awaited<string> , Awaited<boolean>, Awaited<number>`는 각각 string, boolean, number 이다. 이것을 규칙 1번이라고 하겠다.**
+규칙 1번에 의해 str1의 타입인 `Promise<Awaited<string>>` 은 `Promise<string>` 이다.
+
+#### 규칙 1번 : Awaited<객체가 아닌 값> === 객체가 아닌 값 
+
+T가 객체인 경우에도 추가로 { then(onfulfilled: infer F, ...args: infer _) : any } 를 만족해야 한다. then 이라는 메서드를 가지고 있어야 하는데 대표적으로 Promise 인스턴스가
+then 메서드를 갖고 있다. 여기서 말하는 Promise 인스턴스는 Promise 객체와 다르다. Promise.resolve 에서의 Promise는 Promise 객체이고, new Promise() 나
+Promise.resolve() 의 반환값은 Promise 인스턴스이다.     
+Promise의 인스턴스는 다음과 같다.
+```typescript
+interface Promise<T> {
+  then<TResult1 = T, TResult2 = never>(onfulfilled?: (((value: T) => (PromiseLike<TResult1> | TResult1)) | undefined | null), onrejected?: (((reason: any) => (PromiseLike<TResult2> | TResult2)) | undefined | null)): Promise<TResult1 | TResult2>
+  catch<TResult = never>(onrejected?: (((reason: any) => (PromiseLike<TResult> | TResult)) | undefined | null)): Promise<T | TResult>
+}
+```
+상당히 복잡하지만 분명한 것은 then, catch 메서드를 가지고 있다는 것이다. 따라서 Promise 객체는 Object & { then(onfulfilled: infer F, ...args: infer _) : any } 를 extends 한다.  
+Awaited 에서 T 가 Promise 이면 then의 첫 번째 매겨변수인 F를 infer 한다. F 가 infer 되면 다시 F가 ((value:infer V, ...args: infer _)=>any) 를 extends 하는지 확인하고, extends 한다면
+첫 번째 매개변수 V를 infer 한다. 왜 연달아 두 번 infer 하는지 실제 코드 예시를 보면 쉽게 알 수 있다.
+```typescript
+
+```
+
+#### 규칙 2번 : Awaited<Promise<T>> === Awaited<T>
 
 
-
-
-
-
-
+## 3.11 bind 분석하기
 
 
 
