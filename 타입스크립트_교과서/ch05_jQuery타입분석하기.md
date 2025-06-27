@@ -157,16 +157,176 @@ $(tag)가 가능하지 확인하려면 JqueryStatic 인터페이스의 오버로
 
 
 ## 5.1 jQuery 직접 타이핑하기
+직접 타입을 만드는 것은 이미 있는 패키지의 타입을 .d.ts 파일로 분석하는 것보다 훨씬 어렵다. 그리니 이번에는 jQuery  라이브러리의 타입을 직접 만들어보겠다.
+다만 이미 JQuery 인터페이스와 JQueryStatic 인터페이스를 알고 있으므로, 그대로 따라 하지 않고 최대한 간단히 만들어 보겠다.   
+jquery 디렉터리 안에 zquery.ts 파일을 만들고 다음 코드르 입력한다.
+```typescript
+interface zQuery {}
 
+declare const Z: zQuery;
 
+Z("p").removeClass("myClass noClass").addClass("yourClass");
 
+Z(["p","t"]).text("hello");
 
+const tag2 = Z("ul li").addClass(function(index) {
+  return "item-"+index;
+})
 
+Z(tag2).html(function() {
+  console.log(this);
+  return Z(this).data('name') + ' 입니다.'
+})
+```
+이제 zQuery 인터페이스를 수정하여 코드에 에러가 없도록 만들면 된다. 먼저 Z 에 발생하는 에러를 없애 보겠다. 함수를 타이핑하면 된다.
+```typescript
+interface zQuery {
+  (tag:string | string[]):zQueryInstance;
+}
+interface zQueryInstance {}
 
+//... 아래 동일
+```
+함수를 타이핑하고 나면 에러의 위치가 변견된다. 주의할 점은 tag2 변수의 타입이 any 라는 점이다. 이 부분은 에러가 아니지만 해결해야 한다.  
+zQuery 인터페이스가 JQueryStatic 인터페이스에서 봤던 오버로딩과 다르다고 생각할 수 있다. 다르긴 하지만 타입 에러만 사라진다면 문제 없다. 
+타이핑은 제대로 했는지 확신하기 매우 어려우므로, 항상 에러가 없는 정도로만 타이핑하고 에러가 발생한다면 수정하면 된다.  
+Z(tag), Z(this) 에서도 에러가 발생하지만, 먼저 메서드들 위주로 간단하게 타이핑해보겠다.
 
+```typescript
+interface zQuery {
+  (tag:string | string[]):zQueryInstance;
+}
+interface zQueryInstance {
+  removeClass(param:string):this;
+  addClass(param:string):this;
+  text(param:string):this;
+  html(param:string):this;
+  data(param:string):this;
+}
+```
+많은 에러가 해결됐다. addClass 메서드의 반환값 타입을 this로 함으로써 tag2 변수의 타입이 zQueryInstance가 되었다. 대신 이로 인해 Z(tag2)에
+새로운 에러가 발생한다.  
+이제 Z 함수에 tag나 this를 넣는 부분, addClass,html 메서드에 함수 인수를 넣는 부분, html 메서드 안에서 this를 사용하는 부분을 타이핑한다.
+```typescript
+interface zQuery {
+  (tag:string | string[]):zQueryInstance;
+  (tag:zQueryInstance):zQueryInstance;
+}
+interface zQueryInstance {
+  removeClass(param:string):this;
+  addClass(param:string):this;
+  addClass(callBack:(this:zQueryInstance,index:number)=>string):this;
+  text(param:string):this;
+  html(param:string):this;
+  html(callBack:(this:zQueryInstance, index:number)=>string):this;
+  data(param:string):this;
+}
+```
+Z 함수가 zQueryInstance 인수를 받을 수 있도록 오버로딩을 추가했고, addClass와 html 메서드에도 인수가 함수인 경우에 해당하는 오버로딩을 추가했다.
+또한 this의 타입도 zQueryInstance로 추가했다.  
+이렇게 모든 에러가 사라졌다. 지금 만든 타입은 @types/jquery 패키지의 타입과 많이 다르다. 제네릭도 전혀 사용하지 않았다. 이처럼 사람마다 타이핑 방법이
+완전히 다를 수 있다. **에러가 없도록 최소한으로만 타이핑하고 나중에 에러가 발생하면 그때 다시 정확하게 타이핑하여 해결하면 된다.**
 
+## 5.2 export = 타입 이해하기
+index.d.ts 마지막에 있는 export = jQuery 의 의미에 대해 알아보겠다.
+```typescript
+// node_modules/@types/jquery/index.d.ts
+// ...
+export = jQuery;
+```
+jQuery 는 misc.d.ts 에 있는 변수이다. `/// <reference path="misc.d.ts"/>` 주석이 있어서 접근이 가능하다.
+```typescript
+// node_modules/@types/jquery/misc.d.ts
+//...
+declare const jQuery:JQueryStatic;
+declare const $: JQueryStatic;
+//...
+```
+다음으로 `export =` 이다. 이 부분은 무엇을 의미하는 것일까? 일단 이 문법은 CommonJS 모듈 시스템의 module.exports 문법도 아니고, ECMAScript 모듈 시스템의
+export default 문법도 아니다.  
+이 문법은 타입스크립트에만 있는 문법으로 CommonJS 문법을 사용하기 위해 존재한다. 따라서 `const $ = require('jquery')` 로 jquery 패키지를 import 할 수 있다.
+다만 타입스크립트에서는 require로 import 할 수 없으므로 다른 방식을 찾아야 한다. 사용할 수 있는 방법은 `import $ from 'jquery'` 로 import 하는 것이다.  
+이 방식은 ECMAScript 모듈 시스템의 import 방식인데 어떻게 CommonJS 모듈인 jquery 패키지를 import 할 수 있을까? tsconfig.json 에서 esModuleInterop 옵션이 true로
+설정되어 있기에 가능하다. 이 설정이 false 인 경우를 위해서 타입스크립트는 CommonJS 모듈을 위해 다음과 같은 문법을 준비해두었다
+```typescript
+import $ = require('jquery');
+```
 
+## 5.3 스크립트 파일과 모듈 파일 이해하기
+여기서 test.ts 에서는 import 문이 없었는데도 `$` 함수를 사용할 수 있었다. 이는 타입스크립트에서 misc.d.ts 파일을 스크립트 파일로 인식했기 때문이다.  
+파일 내부에서 최상위 스코프에 import나 export 예약어가 없으면 스크립트 파일이 된다. 반대로 import, export 예약어가 있으면 모듈 파일이 된다.  
+인터페이스와 네임스페이스는 병합되는 특성이 있어서 문제가 될 수 있다고 했다. 모듈 파일은 인터페이스나 네임스페이스의 이름이 같아도 합쳐지지 않는다.
+  
+모듈 파일의 이해를 위해 module1.ts, module2.ts, module3.ts 파일을 만들고 코드를 작성해보겠다.
+```typescript
+// module1.ts
+export interface Test {
+  name: string;
+}
 
+export default function() {
+  console.log('default export')
+}
+
+// module2.ts
+export interface Test {
+  name2:string;
+}
+
+// module3.ts
+import * as module1 from './module1';
+import * as module2 from './module2';
+
+const ex1:module1.Test = {
+  name:"hi",
+  name2:"error",
+}
+const ex2:module2.Test = {
+  name:'error',
+  name2:'hi',
+};
+module1.default();
+```
+1,2에 Test 인터페이스가 있지만 서로 합쳐지지 않는다. 
+
+```typescript
+//module4.ts
+interface Name {
+  first:string,
+  last:string,
+}
+
+interface Age {
+  korean:number;
+  american:number;
+}
+
+export type { Age };
+export default Name;
+
+//module5.ts
+import type Name from './module4'
+import type { Age } from './module4';
+
+const name:Name = {
+  first:'1',
+  last:'2'
+}
+const age:Age = {
+  american:12,
+  korean:3,
+}
+
+```
+Age를 named export 할 때 export 대신 export type 을 사용할 수 있다. export 하는 대상이 값이 아니라 타입임을 명시한 것이다. 반대로 default인
+Name 을 import 하거나 Age를 named import 할 때는 import type을 사용할 수 있다. 마찬가지로 import 하는 대상이 값이 아니라 타입임을 명시한 것이다.
+이를 Type-Only imports/exports 라고 한다.  
+주의할 점은 import type Name, { Age } 처럼 default import 와 named import를 한 번에 할 수 없다.
+
+## js 파일 생성하기
+```
+> tsc test.ts
+```
 
 
 
