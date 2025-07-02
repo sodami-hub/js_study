@@ -214,10 +214,107 @@ AxiosError를 처리할 때 axios.isAxiosError 타입 서술을 통해 error의 
 ## 6.1 Axios 직접 타이핑하기
 axios 디렉터리에 zaxios.ts 파일을 만들고 코드를 입력한다.
 ```typescript
+interface Zaxios {}
 
+declare const zaxios: Zaxios;
+
+interface Post {
+  userId: number, id: number, title: string, body: string
+}
+
+(async() => {
+  try {
+    const res = await zaxios.get<Post>(`https://jsonplaceholder.typicode.com/posts/1`);
+    console.log(res.data.userId);
+    const res2 = await zaxios.post<Post>(`https://jsonplaceholder.typicode.com/posts`, {
+      title: 'foo',
+      body: 'bar',
+      userId:1,
+    });
+    console.log(res2.data.id)
+  } catch(error) {
+    if(zaxios.isAxiosError<{message:string}>(error)) {
+      console.log(error.response?.data.message);
+    }
+  }
+})();
+
+//Axios
+new ZAxios().get(`www.gilbut.co.kr`);
+
+// AxiosInstance
+zaxios({url:`www.gilbut.co.kr`, method:'get'});
+
+//AxiosStatic
+zaxios.create().get(`www.gilbut.co.kr`);
 ```
+먼저 get, post, isAxiosError, create 같은 메서드를 만들겠따. 타입 매개변수 자리도 마련해야 한다.
+```typescript
+interface ZaxiosResponse {}
 
+interface Zaxios {
+  get<ResponseData>(url:string):ZaxiosResponse;
+  post<ResponseData>(url:string, requestData:unknown):ZaxiosResponse;
+  isAxiosError<ResponseData>(error:unknown):ZaxiosResponse;
+  create():Zaxios;
+}
+declare const zaxios: Zaxios;
+```
+메서드를 선언하고, 반환값은 ZaxiosResponse로 선언했다. requestData는 unknown 으로 표기했는데, 어떤 데이터를 서버로 보낼지 알수 없기 때문이다.
+any는 지양해야 하는 타입이므로 unknown을 사용한다. ZaxiosResponse가 빈 인터페이스이므로 res, res2 의 data 에서 에러가 발생한다.
+isAxiosError 의 반환값도 ZaxiosResponse가 아니다. ZaxiosResponse를 속성으로 갖고 있는 에러 객체여야 한다.  
+ZaxiosResponse 와 isAxiosError 의 타입을 수정한다.
+```typescript
+interface ZaxiosResponse<ResponseData> {
+  data: ResponseData;
+}
 
+interface ZaxiosError<ResponseData> {
+  response?:ZaxiosResponse<ResponseData>
+}
+
+interface Zaxios {
+  get<ResponseData>(url:string):ZaxiosResponse<ResponseData>;
+  post<ResponseData>(url:string, requestData:unknown):ZaxiosResponse<ResponseData>;
+  isAxiosError<ResponseData>(error:unknown):error is ZaxiosError<ResponseData>;
+  create():Zaxios;
+}
+declare const zaxios: Zaxios;
+```
+타입 서술을 사용해서 error의 타입을 ZaxiosError로 만들었다. response 속성에 옵셔널 체이닝이 적용되어 있으니 인터페이스 내부에서도 옵셔널로 선언했다.  
+이제 new ZAxios 와 zaxios() 부분의 에러만 남았다. 클래스와 함수로 axios 를 사용하는 방식을 타이핑한다.
+```typescript
+interface ZaxiosResponse<ResponseData> {
+  data: ResponseData;
+}
+
+interface ZaxiosError<ResponseData> {
+  response?:ZaxiosResponse<ResponseData>
+}
+
+interface Config {
+  url:string;
+  method:string;
+}
+declare class ZAxios {
+  constructor();    // 클래스로 호출  new ZAxios() ...
+}
+
+interface Zaxios {
+  <ResponseData>(config:Config):ZaxiosResponse<ResponseData>   // 함수로 호출 zaxios(config)
+  get<ResponseData>(url:string):ZaxiosResponse<ResponseData>;
+  post<ResponseData>(url:string, requestData:unknown):ZaxiosResponse<ResponseData>;
+  isAxiosError<ResponseData>(error:unknown):error is ZaxiosError<ResponseData>;
+  create():Zaxios;
+}
+
+declare const zaxios: Zaxios;
+```
+ZAxios 클래스를 선언하고, declare 예약어를 붙여서 타입 선언만 할 것임을 알렸다. declare 예약어를 붙이지 않으면 메서드 구현부까지 전부 구현해야 한다.
+Zaxios 인터페이스에서는 함수 호출이 가능하게끔 타입을 추가했다.  
+  
+다만 코드를 수정하고 나니 클래스에 get 메서드가 존재하지 않아 에러가 발생한다. get, post 같은 메서드를 클래스로 옮기고 인터페이스가
+클래스를 상속하게 만들면 모든 에러가 사라진다.
 
 ## 6.2 다양한 모듈 형식으로 js 파일 생성하기
 
