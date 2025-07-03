@@ -230,12 +230,198 @@ declare namespace React {
   function useEffect(effect: EffectCallback, deps?: DependencyList): void;
 }
 ```
+두 번째 매개변수 deps는 옵셔널이다. 실제로 React에서도 두 번째 매개변수를 사용하지 않는 useEffect 용법이 있다. EffectCallback 에서 정의로 이동하면,
+DependencyList 도 확인할 수 있다.
+```typescript
+declare namespace React {
+  type DependencyList = ReadonlyArray<unknown>;
 
+  // NOTE: callbacks are _only_ allowed to return either void, or a destructor.
+  type EffectCallback = () => (void | Destructor);
+}
+```
+EffectCallback은 void 또는 Destructor를 반환하는 함수이고, DependencyList는 readonly 배열이다. 요소는 unknown 으로 되어 있다.
+Destructor를 확인해보겠다. 
+```typescript
+declare const UNDEFINED_VOID_ONLY: unique symbol;
+// Destructors are only allowed to return void.
+type Destructor = () => void | { [UNDEFINED_VOID_ONLY]: never };
+```
+Destructor 도 void 나 { [UNDEFINED_VOID_ONLY]: never } 를 반환하는 함수이다. unique symbol은 2.2 에서 배운 고유한 symbol 이다. const나 
+클래스의 static readonly 속성에 symbol을 대입한 경우 저절로 unique symbol이 된다.  
+그렇다면 { [UNDEFINED_VOID_ONLY]: never } 는 무슨 의미일까? 속성 타입이 never라 실제로는 쓰이지 않는다. 단순히 코드만 봐서는 의미를 알기 어렵고,
+이 코드가 만들어진 히스토리를 봐야 한다. 히스토리는 DefinitelyTyped 깃허브에서 볼 수 있다. 깃허브 화면에서 Blame을 클릭한다. 그리고 Destructor가 있는 줄의
+Blame을 선택한다. 해당 코드를 추가한 이유를 적어놓았다. 또 어떤 부분이 수정되었는지도 알 수 있다.
+```
+Improve react's no-return hack for TS 4.3 (#51081)
+* Improve react's no-return hack
 
+React, along with react-dom and react-test-renderer, have a few return
+types that are intended to disallow returning anything except
+`undefined`. Previously, the union type `void | undefined` worked for
+this purpose, but with TS 4.3's new, more aggressive subtype reduction,
+this is treated as just `void`. And `void`-returning signatures allow
+*anything* to be returned.
 
+The solution is to use a brand with void, like `void | { _a: never}`.
+This allows functions that don't actually return anything to infer
+`void`, which is assignable to `void`. Any functions with a return
+statement will infer from the return statement, and that type will not
+be assignable to `{ _a: never }`. Thanks to @tjjfvi for suggesting this
+solution.
 
+Exceptions are
 
+1. returning expressions of type `undefined`
+2. returning expressions of type `void`
+3. casting to the brand type.
 
+The first should be fine, the second should rarely happen by mistake,
+and the third should only happen as an intentional workaround.
+
+I'm opening this PR in order to maintain backward compatibility. It's
+entirely possible that trying to restrict the return type of callbacks
+is pointless, and that it's fine for callbacks to actually return
+anything. If that's the case, it would be fine to simplify the return
+type to just `void`.
+
+* use unique symbol+type alias for brand
+```
+설명을 보면 다음과 같은 코드에서 에러를 만들기 위해 저런 기법을 사용한 것이다. Destructor 함수(useEffect의 return에 있는 함수)는 void나 undefined만 반환해야 한다.
+```typescript
+useEffect(()=> {
+  console.log('useEffect');
+  return () => {
+    return 'no';
+  }
+}, [])
+/*
+Argument of type () => () => string is not assignable to parameter of type EffectCallback
+Type () => string is not assignable to type void | Destructor
+Type () => string is not assignable to type Destructor
+Type string is not assignable to type void | { [UNDEFINED_VOID_ONLY]: never; }
+ */
+```
+그래서 'no'를 반환하는 경우 에러가 발생한다. 하지만 Destructor의 타입이 단순히 ()=>void 라면 에러가 발생하지 않는다. 2.7.3절에서 배운 대로 ()=>void는
+반환값이 무엇이든 상관하지 않는 타입이기 때문이다. 하지만 ()=>void | { [UNDEFINED_VOID_ONLY]:never } 는 반환값이 void 와 undefined 로 제한된다.  
+  
+사실 ()=>void | undefined 만 해도 원하는 것을 얻을 수 있다. 이게 더 간단한데 왜 이렇게 하지 않을까? 바로 strictNullChecks 옵션을 사용하지 않는 경우에도
+대비하기 위해서이다. strictNullChecks 옵션을 비활성화하면 void | undefined는 void와 같아진다. 따라서 모든 경우에서 void와 undefined를 제외한 값을
+반환값으로 쓰지 못하게 하기 위한 기법이다.
+
+### 7.1.4 useMemo, useCallback
+useMemo는 test.tsx 에서는 사용하지 않았지만 자주 쓰이는 훅이므로 함께 알아보겠다. React 에서 useMemo는 useCallback의 역할도 수행할 수 있다.
+useMemo의 첫 번째 매개변수인 factory 함수가 함수를 반환한다면 useCallback 으로 대체할 수 있다.
+```typescript
+declare namespace React {
+  function useCallback<T extends Function>(callback: T, deps: DependencyList): T;
+  function useMemo<T>(factory: () => T, deps: DependencyList | undefined): T;
+}
+```
+useCallback의 첫 번째 매개변수는 함수이고, 두 번째는 DependencyList(readonly 배열)이다. useEffect 와는 다르게 옵셔널이 아니다. useMemo의 첫 번째 매개변수도
+함수인 factory 이지만, 두 번째 매개변수는 DependencyList | undefined 이다. 왜 이부분을 옵셔널로 만들지 않았을까?  
+여기에는 제작자의 의도가 들어 있다. 자스에서는 useMemo의 두 번째 매개변수를 사용하지 않아도 된다. 하지만 이는 보통 실수인 경우가 많으므로 두 번째 매개변수를
+만드시 사용하도록 한 것이다. 만약 의도적으로 생략하는 경우 완전히 생략하기 보다는 undefined를 직접 입력하라는 뜻이다.  
+useCallback 또한 마찬가지다. deps를 넣지 않으면 useCallback을 사용하는 의미가 없어지므로 타입스크립트에서는 애초에 넣지 않을 수 없게 만들었다.  
+  
+useCallback 에서 T extends Function 으로 제약을 둔 이유가 있다. 임의의 함수는 Function 외에도 (...args: unknown[]) => unknown 등으로 표현할 수 있다.
+두 가지의 차이를 비교해보겠다.
+```typescript
+type DependencyList = ReadonlyArray<unknown>;
+
+declare function useArrowFunctionCallback<T extends (...args:unknown[]) =>unknown>(callback:T,dep:DependencyList):T;
+declare function useFunctionCallback<T extends Function>(callback:T,dep:DependencyList):T;
+
+const testCallback = useArrowFunctionCallback((test)=> {},[])
+const testCallback2 = useFunctionCallback((test)=> {},[])  // error => Parameter test implicitly has an any type.
+```
+T extends Function 으로 해야만 매개변수에서 에러가 발생한다. 저 매개변수는 any로 추론되므로 noImplicitAny 에러를 피하기 위해 사용자가 직접
+타이핑해야 하는 매개변수이다. (...args:unknown[]) => unknown 의 경우에는 매개변수가 unknown 으로 추론되기 때문에 에러가 발생하지 않는다.
+test.ts 에서 매개변수 e 에서 에러가 발생하는 이유이기도 하다.  
+이 에러를  해결하기 위해서는 매개변수 e에 타이핑해야 한다. 또는 onSubmit, onChange 변수 자체에 타이핑할 수도 있다. 변수의 값이 함수인 경우 변수 자체에 타이핑하는 것이
+조금 더 좋은 방법일 수 있다. 매개변수와 반환값을 한 번에 타이핑할 수 있기 때문이다.  
+  
+어떤 타입을 표기해야 하는지 알려면 form의 onSubmit과, input의 onChange 속성의 타입을 확인해야 한다. 각각의 정의를 보겠다.
+```typescript
+declare namespace React {
+  interface DOMAttributes<T> {
+    // Form Events
+    onSubmit?: FormEventHandler<T> | undefined;
+  }
+
+  interface InputHTMLAttributes<T> extends HTMLAttributes<T> {
+    onChange?: ChangeEventHandler<T> | undefined;
+  }
+}
+```
+onSubmit 과 onChange의 타입도 알고, 어떤 다른 속성을 사용할 수 있는지도 추가로 확인할 수 있다. 또한, useRef를 분석할 때 RefObject의 T가 HTMLInputElement 였으니
+onChange의 T도 HTMLInputElement 이고, onSubmit은 Form 속성이므로 T가 HTMLFormElement 라고 추측할 수 있다. 이 부분은 다음 절에서 정확히 확인하겠다.  
+이러한 정보로 타이핑을 해보겠다.
+```typescript
+const onSubmitForm:EventHandler<FormEvent> = useCallback((e)=> {
+  e.preventDefault();
+  const input = inputEl.current;
+  if(word[word.length -1] == value[0]) {
+    setResult('딩동댕');
+    setWord(value);
+    setValue('');
+    if(input) {
+      input.focus();
+    }
+  } else {
+    setResult('땡');
+    setValue('');
+    if (input) {
+      input.focus();
+    }
+  }
+},[word, value])
+
+const onChange:ChangeEventHandler<HTMLInputElement> = useCallback((e)=>{
+  setValue(e.currentTarget.value);
+},[]);
+```
+이번에는 매개변수만 타이핑하는 방식을 알아보겠다. 다만 FormEventHandler, ChangeEventHandler 의 매개변수가 무엇인지 알아야하므로 각각의 정의로 이동해보겠다.
+```typescript
+declare namespace React {
+  // ...
+  type EventHandler<E extends SyntheticEvent<any>> = { bivarianceHack(event: E): void }["bivarianceHack"];
+  // ...
+  type FormEventHandler<T = Element> = EventHandler<FormEvent<T>>;
+  type ChangeEventHandler<T = Element> = EventHandler<ChangeEvent<T>>;
+}
+```
+FormEvent 와 ChangeEvent 가 무엇인지는 아직 모르지만 `SyntheticEvent<any>` 제약을 통과했다는 것을 알 수 있다. EventHandler와 `FormEvent<T>` 를 조합하면
+`(event: FormEvent<T>):void` 가 되고, `ChangeEvent<T>`를 조합하면 `(event: ChangeEvent<T>):void`가 된다.  
+마지막으로 useCallback의 타입도 다시 확인해야 한다. useCallback은 callback으로 받은 함수 T 를 그대로 반환한다. 따라서 EventHandler 함수를 받아도
+그대로 EventHandler를 반환한다.  
+test.tsx 를 수정해보겠다.
+```typescript
+  const onSubmitForm= useCallback((e:FormEvent<HTMLFormElement>)=> {
+  e.preventDefault();
+  const input = inputEl.current;
+  if(word[word.length -1] == value[0]) {
+    setResult('딩동댕');
+    setWord(value);
+    setValue('');
+    if(input) {
+      input.focus();
+    }
+  } else {
+    setResult('땡');
+    setValue('');
+    if (input) {
+      input.focus();
+    }
+  }
+},[word, value])
+
+const onChange = useCallback((e:ChangeEvent<HTMLInputElement>)=>{
+  setValue(e.currentTarget.value);
+},[]);
+```
+위의 두 함수는 `(e:FormEvent<HTMLFormElement>) => void` 타입과  `(e:ChangeEvent<HTMLInputElement>)=>void` 타입으로 EventHandler의 타입이다.
+각각 Form 과 Input 의 이벤트 핸들러 타입이 된다. 
 
 
 ## 7.2 JSX 타입 이해하기

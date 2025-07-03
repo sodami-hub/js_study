@@ -1,4 +1,4 @@
-import React, {ChangeEvent, FormEvent} from 'react';
+import React, {ChangeEvent, ChangeEventHandler, EventHandler, FormEvent} from 'react';
 import {useState,useCallback, useRef,useEffect} from "react";
 
 const WordRelay = () => {
@@ -11,7 +11,8 @@ const WordRelay = () => {
     console.log('useEffect');
   },[])
 
-  const onSubmitForm = useCallback((e:FormEvent<HTMLFormElement>)=> {
+
+  const onSubmitForm= useCallback((e:FormEvent<HTMLFormElement>)=> {
     e.preventDefault();
     const input = inputEl.current;
     if(word[word.length -1] == value[0]) {
@@ -31,7 +32,7 @@ const WordRelay = () => {
   },[word, value])
 
   const onChange = useCallback((e:ChangeEvent<HTMLInputElement>)=>{
-    setValue(e.currentTarget.value)
+    setValue(e.currentTarget.value);
   },[]);
 
   return (
