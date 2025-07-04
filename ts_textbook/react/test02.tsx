@@ -1,5 +1,16 @@
-import React, {ChangeEvent, ChangeEventHandler, EventHandler, FormEvent, FormEventHandler} from 'react';
+import React, {ChangeEvent, ChangeEventHandler, FormEvent, FormEventHandler, ReactNode} from 'react';
 import {useState,useCallback, useRef,useEffect} from "react";
+
+interface Props {
+  children: ReactNode;
+  onSubmit: (e:FormEvent<HTMLFormElement>) => void;
+}
+
+const Form = ({children, onSubmit}:Props) => {
+  return (
+    <form onSubmit={onSubmit}>{children}</form>
+  )
+}
 
 const WordRelay = () => {
   const [word, setWord]= useState('sodami');
@@ -38,10 +49,10 @@ const WordRelay = () => {
   return (
     <>
       <div>{word}</div>
-      <form onSubmit={onSubmitForm}>
+      <Form onSubmit={onSubmitForm}>
         <input ref={inputEl} value={value} onChange={onChange}/>
         <button>입력!</button>
-      </form>
+      </Form>
       <div>{result}</div>
     </>
   )

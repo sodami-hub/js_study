@@ -425,6 +425,241 @@ const onChange = useCallback((e:ChangeEvent<HTMLInputElement>)=>{
 
 
 ## 7.2 JSX 타입 이해하기
+JSX의 타입과 HTMLFormElement, HTMLInputElement 의 타입도 알아보겠다. test.tsx 의 form 태그의 정의로 이동해보겠다.
+```typescript
+declare global {
+  namespace JSX {
+    interface Element extends React.ReactElement<any, any> { }
+    interface ElementClass extends React.Component<any> {
+      render(): React.ReactNode;
+    }
+
+    interface IntrinsicAttributes extends React.Attributes { }
+    interface IntrinsicClassAttributes<T> extends React.ClassAttributes<T> { }
+    
+    interface IntrinsicElements {
+      form: React.DetailedHTMLProps<React.FormHTMLAttributes<HTMLFormElement>, HTMLFormElement>;
+      input: React.DetailedHTMLProps<React.InputHTMLAttributes<HTMLInputElement>, HTMLInputElement>;
+    }
+  }
+}
+```
+declare global은 모듈 파일 안에서 전역 타입을 만드는 선언 방식이다. 현재 declare global 안에 namespace JSX 가 있는데, 이렇게 하면 import 없이도 
+JSX.Element, JSX.IntrinsicElements 등을 자유롭게 사용할 수 있다.  
+JSX 문법에서 사용했던 form 은 JSX.IntrinsicElements.form 이고, input 은 JSX.IntrinsicElements.input 임을 알 수 있다. 이들은
+React.DetailedHTMLProps로 되어 있는데 확인해보면 다음과 같다.
+```typescript
+declare namespace React {
+  type DetailedHTMLProps<E extends HTMLAttributes<T>, T> = ClassAttributes<T> & E;
+}
+```
+HTMLAttributes, ClassAttributes는 다음과 같다.
+```typescript
+declare namespace React {
+  interface HTMLAttributes<T> extends AriaAttributes, DOMAttributes<T> {
+    // React-specific Attributes
+    defaultChecked?: boolean | undefined;
+    defaultValue?: string | number | ReadonlyArray<string> | undefined;
+    suppressContentEditableWarning?: boolean | undefined;
+    suppressHydrationWarning?: boolean | undefined;
+    //...
+  }
+
+  interface Attributes {
+    key?: Key | null | undefined;
+  }
+  interface RefAttributes<T> extends Attributes {
+    ref?: Ref<T> | undefined;
+  }
+  interface ClassAttributes<T> extends Attributes {
+    ref?: LegacyRef<T> | undefined;
+  }
+}
+```
+HTMLAttributes 에는 HTML 에서 사용할 수 있는 속성이 모여 있다. DOMAttributes를 상속하고 있는데 여기에는 React 전용 속성과 onChange, onSubmit 같은
+DOM 이벤트를 담고 있다.  
+ClassAttributes 는 React 의 컴포넌트라면 속성으로 가질 수 있는 key와 ref를 갖고 있다.  
+  
+React.DetailedHTMLProps는 HTMLAttributes를 제약으로 두고 있는 E와 ClassAttributes의 인터섹션이므로 E가 정확히 무엇이냐에 따라 form과 input의 속성이 정해진다.
+- JSX.IntrinsicElements.form 의 E는` FormHTMLAttributes<HTMLFormElement>`
+- JSX.IntrinsicElements.input 의 E는 `InputHTMLAttributes<HTMLInputElement>`
+  
+따라서 FormHTMLAttributes와 InputHTMLAttributes를 확인해보겠다.
+```typescript
+declare namespace React {
+  interface FormHTMLAttributes<T> extends HTMLAttributes<T> {
+    acceptCharset?: string | undefined;
+    action?: string | undefined;
+    autoComplete?: string | undefined;
+    encType?: string | undefined;
+    method?: string | undefined;
+    name?: string | undefined;
+    noValidate?: boolean | undefined;
+    target?: string | undefined;
+    rel?: string | undefined;
+  }
+  
+  interface InputHTMLAttributes<T> extends HTMLAttributes<T> {
+    accept?: string | undefined;
+    alt?: string | undefined;
+    // ...
+    type?: HTMLInputTypeAttribute | undefined;
+    value?: string | ReadonlyArray<string> | number | undefined;
+    width?: number | string | undefined;
+
+    onChange?: ChangeEventHandler<T> | undefined;
+  }
+}
+```
+둘 모두 HTMLAttributes를 상속하면서 form과 input 태그에만 사용할 수 있는 속성을 따로 모아두었다. 최종적으로,
+- JSX.IntrinsicElements.form 은 form 태그에서 사용할 수 있는 속성 전체
+- JSX.IntrinsicElements.input 은 input 태그에서 사용할 수 있는 속성 전체
+  
+를 갖고 있는 인터페이스이다. 그렇다면 HTMLFormElement와 HTMLInputElement는 어디서 온 것일까? 정의로 이동해보면 다음 팡리이 나온다.
+```typescript
+//  node_module/@types/react/global.d.ts
+interface HTMLFormElement extends HTMLElement { }
+interface HTMLHeadingElement extends HTMLElement { }
+interface HTMLHeadElement extends HTMLElement { }
+interface HTMLHRElement extends HTMLElement { }
+interface HTMLHtmlElement extends HTMLElement { }
+interface HTMLIFrameElement extends HTMLElement { }
+interface HTMLImageElement extends HTMLElement { }
+interface HTMLInputElement extends HTMLElement { }
+```
+인터페이스 선언만 있고 속성은 하나도 없다. 이런 경우 다른 곳에 선언된 인터페이스와 합쳐지는 걸 의도했다고 추측할 수 있다.   
+global.d.ts 는 index.d.ts 에서 `/// <reference path="global.d.ts">` 로 불러온다. 다시한번 HTMLFormElement 에서 정의로 이동할 때 lib.dom.d.ts 파일을 선택한다.
+이 파일은 타입스크립트에서 기본적으로 제공하는 타입 선언 파일이다. 브라우저의 DOM과 관련한 타입만 모아둔다. 여기에 있는 타입은 따로 import 하지 않아도
+전역으로 사용할 수 있다.
+```typescript
+// lib.dom.d.ts
+interface HTMLFormElement extends HTMLElement {
+  acceptCharset: string;
+  action: string;
+  autocomplete: string;
+  readonly elements: HTMLFormControlsCollection;
+  encoding: string;
+  enctype: string;
+  readonly length: number;
+  method: string;
+  // ...
+}
+```
+HTMLFormElement는 DOM API 에서 접근할 수 있는 form의 속성과 메서드를 갖고 있다. React의 form 태그인 `React.DetailedHTMLProps<React.FormHTMLAttributes<HTMLFormElement>, HTMLFormElement>` 와
+겹치는 속성도 있고, 서로 다른 속성도 있다. React의 JSX와 DOM API가 서로 다르게 동작하므로 속성도 다른 것이다.  
+  
+test.tex의 preventDefault와 currentTarget 의 정의를 보겠다. 모두 BaseSyntheticEvent 인터페이스에 있다.
+```typescript
+declare  namespace React {
+  interface BaseSyntheticEvent<E = object, C = any, T = any> {
+    nativeEvent: E;
+    currentTarget: C;
+    target: T;
+    bubbles: boolean;
+    cancelable: boolean;
+    defaultPrevented: boolean;
+    eventPhase: number;
+    isTrusted: boolean;
+
+    preventDefault(): void;
+
+    isDefaultPrevented(): boolean;
+
+    stopPropagation(): void;
+
+    isPropagationStopped(): boolean;
+
+    persist(): void;
+
+    timeStamp: number;
+    type: string;
+  }
+
+  interface SyntheticEvent<T = Element, E = Event> extends BaseSyntheticEvent<E, EventTarget & T, EventTarget> {}
+  
+  interface FormEvent<T = Element> extends SyntheticEvent<T> {}
+
+  interface ChangeEvent<T = Element> extends SyntheticEvent<T> {
+    target: EventTarget & T;
+  }
+}
+```
+currentTarget이 타입 매개변수 C 이다. C가 어떤 타입인지 타악해야 한다. BaseSyntheticEvent를 상속하는 SyntheticEvent는 FormEvent와 ChangeEvent 에서 사용된다.  
+이제 FromEvent 부터 거슬러 올라가 보겠다.  
+test.tsx의 onChange 함수의 매개변수 e의 타입은 `ChangeEvent<HTMLInputElement>`이므로, SyntheticEvent도 `SyntheticEvent<HTMLInputElement>` 이다.
+SyntheticEvent의 타입 매개변수 E는 제공하지 않았으므로 기본값인 Event 가 되고, 최종적으로 `SyntheticEvent<HTMLInputElement,Event>`가 된다. 이에 따라서
+BaseSyntheticEvent의 타입 매개변수에는 순서대로 `Event, EventTarget & HTMLInputElement, EventTarget` 이 된다.   
+타입 매개변수 C가 BaseSyntheticEvent의 두 번째 타입 매개변수이므로 C는 `EventTarget & HTMLInputElement` 이다. 이런 이유로 e.currentTarget 에서 HTMLInputElement 의
+속성을 사용할 수 있다.  
+  
+마지막으로 컴포넌트의 타입에 대해 알아보겠다.
+```typescript
+const WordRelay = () => {}
+//  WordRelay(): JSX.Element
+
+export default WordRelay;
+```
+WordRelay 변수의 타입은 ()=>JSX.Element 라는 함수이다. 이는 리액트에서 컴포넌트를 가르키는 타입이기도 하다. 하지만 컴포넌트에 대한 정확한 타입은 아니다.
+정확한 타입은 조금 뒤에 알아본다. 다른 컴포넌트를 JSX로 사용하는 경우를 확인하기 위해 test02.tsx를 작성한다.
+```
+import React, {ChangeEvent, ChangeEventHandler, FormEvent, FormEventHandler} from 'react';
+import {useState,useCallback, useRef,useEffect} from "react";
+
+const Form = ({children, onSubmit}) => {
+  return (
+    <form onSubmit={onSubmit}>{children}</form>
+  )
+}
+// Binding element children implicitly has an any type.
+// Binding element onSubmit implicitly has an any type.
+
+const WordRelay = () => {
+  // ...
+  return (
+    <>
+      <div>{word}</div>
+    <Form onSubmit={onSubmitForm}>
+      <input ref={inputEl} value={value} onChange={onChange}/>
+      <button>입력!</button>
+    </Form>
+    <div>{result}</div>
+    </>
+  )
+}
+```
+Form 컴포넌트를 하나 더 만들었다. children과 onSubmit을 prop 으로 받는 컴포넌트이다. 다만 noImplicitAny 에러가 발생한다. 따라서 prop을 타이핑해야 된다.
+매개변수를 구조분해 할당한 것이니만큼 다음과 같이 타이핑할 수도 있다.
+```
+interface Props {
+  children: ()=>JSX.Element;
+  onSubmit: (e:FormEvent<HTMLFormElement>) => void;
+}
+
+const Form = ({children, onSubmit}:Props) => {
+  return (
+    <form onSubmit={onSubmit}>{children}</form>  // () => Element is not assignable to type ReactNode
+  )
+}
+```
+children을 ()=>JSX.Element 로 타이핑하니 에러가 발생한다. 이 타입은 ReactNode 라는 타입에 대입할 수 없다고 나온다. chlidren을 ReactNode 타입으로 변경하면
+에러가 사라진다. ReactNode 의 정의로 이동해보겠다.
+```typescript
+declare namespace React {
+  interface ReactElement<P = any, T extends string | JSXElementConstructor<any> = string | JSXElementConstructor<any>> {
+    type: T;
+    props: P;
+    key: Key | null;
+  }
+  interface ReactPortal extends ReactElement {
+    key: Key | null;
+    children: ReactNode;
+  }
+  type ReactFragment = Iterable<ReactNode>;
+  type ReactNode = ReactElement | string | number | ReactFragment | ReactPortal | boolean | null | undefined;
+}
+```
+ReactNode 는 다양한 타입의 유니언이다. 여기서 기억해야 하는 것은 JSX 문법에 들어갈 수 있는 타입은 ()=>JSX.Element가 아니라 ReactNode 라는 것이다.
+
 
 ## 7.3 React 직접 타이핑하기
 
